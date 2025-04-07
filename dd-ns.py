@@ -89,8 +89,10 @@ def get_top_ips_from_csv(file, count=3):
 def delete_all_yx1_records():
     records = get_existing_dns_records()
     for r in records:
-        if r.get("type") == "A" and r.get("name") == RECORD_NAME:
+        # 使用 'in' 来匹配包含 'yx1' 的记录名称
+        if r.get("type") == "A" and "yx1" in r.get("name", ""):
             delete_dns_record(r.get("id"))
+
 
 def log_existing_yx1_records():
     records = get_existing_dns_records()
