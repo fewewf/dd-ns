@@ -37,7 +37,7 @@ jobs:
         TEST_URL: ${{ secrets.TEST_URL }}  # 如果是敏感数据，使用 secrets.TEST_URL
       run: |
         set -e
-         ./CloudflareST -f ip.txt -t 8 -sl 1 -n 300 -dn 15 -dt 10 -tp 443 -url $TEST_URL -tlr 0 
+         ./CloudflareST -f ip.txt -t 8 -sl 1 -n 300 -dn 8 -dt 10 -tp 8443 -url $TEST_URL -tlr 0 
         
     - name: BestCF
       run: |
