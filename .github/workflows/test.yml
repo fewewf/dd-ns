@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests beautifulsoup4 pandas selenium webdriver-manager
+        pip install requests 
 
     - name: 下载 CloudFlare IP 列表
       run: |
