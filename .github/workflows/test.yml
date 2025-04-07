@@ -1,8 +1,8 @@
-name: Update iphome
+name: Update cloudflare dns
 
 on:
   schedule:
-    - cron: '37 */12 * * *' # 每12小时运行一次
+    - cron: '37 01 * * *' # 每12小时运行一次
   workflow_dispatch: # 允许手动触发
 
 jobs:
