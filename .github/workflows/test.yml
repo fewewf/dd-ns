@@ -25,7 +25,8 @@ jobs:
 
     - name: 下载 CloudFlare IP 列表
       run: |
-         wget -qO- https://raw.githubusercontent.com/ymyuuu/IPDB/refs/heads/main/BestProxy/proxy.txt | tee ip.txt
+         wget -qO ip.txt https://raw.githubusercontent.com/ymyuuu/IPDB/refs/heads/main/BestProxy/proxy.txt
+
 
 
     - name: Make script executable
