@@ -48,4 +48,12 @@ jobs:
         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
-    
+    - name: Clean up Workflow Runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+         #token: ${{ secrets.GITHUB_TOKEN }}
+         token: ${{ secrets.PAT_TOKEN }}
+         
+         repository: ${{ github.repository }}
+         retain_days: 1
+         keep_minimum_runs: 0
