@@ -46,11 +46,33 @@ def delete_dns_record(record_id):
         response = requests.delete(delete_url, headers=headers)
         if response.status_code != 200:
             raise Exception(f"Failed to delete DNS record with ID {record_id}: {response.text}")
+        print(f"成功删除 DNS 记录 ID {record_id}")
     except Exception as e:
         print(f"Exception occurred while deleting DNS record with ID {record_id}: {str(e)}")
 
+def get_existing_dns_records():
+    """获取当前所有 DNS 记录"""
+    url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records"
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise Exception(f"Failed to fetch DNS records: {response.text}")
+    return response.json().get("result", [])
+
+def record_exists(name, ip):
+    """检查指定的 DNS 记录是否已存在"""
+    records = get_existing_dns_records()
+    for record in records:
+        if record["name"] == name and record["content"] == ip:
+            return True
+    return False
+
 def create_dns_record(ip, record_name):
+    """创建 DNS 记录"""
     try:
+        if record_exists(record_name, ip):
+            print(f"DNS 记录 {record_name} -> {ip} 已存在，跳过创建")
+            return
+        
         create_url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records"
         create_data = {
             "type": "A",
@@ -62,27 +84,14 @@ def create_dns_record(ip, record_name):
         response = requests.post(create_url, headers=headers, json=create_data)
         if response.status_code != 200:
             raise Exception(f"Failed to create DNS record for IP {ip}: {response.text}")
+        
         send_telegram_message(f"成功创建 DNS 记录: {record_name} ip:{ip}")
+        print(f"成功创建 DNS 记录: {record_name} -> {ip}")
     except Exception as e:
         print(f"Exception occurred while creating DNS record for IP {ip}: {str(e)}")
 
-def get_top_ips_from_csv(filename, count=3):
-    """从CSV文件中获取前N个IP地址"""
-    ips = []
-    with open(filename, mode='r', encoding='utf-8') as file:
-        reader = csv.reader(file)
-        next(reader)  # 跳过标题行
-        for i, row in enumerate(reader):
-            if i >= count:
-                break
-            if row:  # 确保行不为空
-                ip = row[0].strip()
-                if ip:  # 确保IP不为空
-                    ips.append(ip)
-    return ips
-
 def main():
-    # 从1.csv获取前三个IP
+    # 从result.csv获取前三个IP
     try:
         top_ips = get_top_ips_from_csv("result.csv", 3)
         if not top_ips:
@@ -91,21 +100,19 @@ def main():
 
         print(f"获取到的前三个IP地址: {top_ips}")
 
-        # 删除旧的DNS记录
-        url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records"
-        response = requests.get(url, headers=headers)
-        data = response.json()
-        for record in data.get("result", []):
+        # 获取并删除旧的 DNS 记录
+        records = get_existing_dns_records()
+        for record in records:
             record_name = record.get("name", "")
             if record_name == name:  # 只删除与yx1完全匹配的记录
                 delete_dns_record(record["id"])
 
-        # 为每个IP创建yx1记录
+        # 为每个 IP 创建新的 DNS 记录
         for ip in top_ips:
             create_dns_record(ip, name)
-            print(f"成功创建DNS记录 {name} => {ip}")
+            print(f"成功创建 DNS 记录 {name} => {ip}")
 
-        send_telegram_message(f"成功为 {name} 创建了 {len(top_ips)} 条DNS记录:\n" + "\n".join(top_ips))
+        send_telegram_message(f"成功为 {name} 创建了 {len(top_ips)} 条 DNS 记录:\n" + "\n".join(top_ips))
 
     except Exception as e:
         print(f"程序运行出错: {str(e)}")
