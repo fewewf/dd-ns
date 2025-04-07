@@ -1,12 +1,33 @@
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-import time
 import os
 import requests
-import re
 import csv
+
+# 获取 GitHub Secrets
+api_token = os.environ.get("CLOUDFLARE_API_TOKEN")
+zone_id = os.environ.get("CF_ZONE_ID")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+name = "yx1"
+headers = {
+    "Authorization": f"Bearer {api_token}",
+    "Content-Type": "application/json",
+}
+
+# 读取CSV文件的函数
+def get_top_ips_from_csv(filename, count=3):
+    """从CSV文件中获取前N个IP地址"""
+    ips = []
+    with open(filename, mode='r', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        next(reader)  # 跳过标题行
+        for i, row in enumerate(reader):
+            if i >= count:
+                break
+            if row:  # 确保行不为空
+                ip = row[0].strip()
+                if ip:  # 确保IP不为空
+                    ips.append(ip)
+    return ips
 
 # Telegram 设置
 def escape_markdown_v2(text):
@@ -29,17 +50,7 @@ def send_telegram_message(content):
     if response.status_code != 200:
         print(f"发送消息到 Telegram 时发生错误: {response.text}")
 
-# 获取 GitHub Secrets
-api_token = os.environ.get("CLOUDFLARE_API_TOKEN")
-zone_id = os.environ.get("CF_ZONE_ID")
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-name = "yx1"
-headers = {
-    "Authorization": f"Bearer {api_token}",
-    "Content-Type": "application/json",
-}
-
+# 删除 DNS 记录
 def delete_dns_record(record_id):
     try:
         delete_url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
@@ -50,6 +61,7 @@ def delete_dns_record(record_id):
     except Exception as e:
         print(f"Exception occurred while deleting DNS record with ID {record_id}: {str(e)}")
 
+# 获取现有 DNS 记录
 def get_existing_dns_records():
     """获取当前所有 DNS 记录"""
     url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records"
@@ -58,6 +70,7 @@ def get_existing_dns_records():
         raise Exception(f"Failed to fetch DNS records: {response.text}")
     return response.json().get("result", [])
 
+# 检查 DNS 记录是否已存在
 def record_exists(name, ip):
     """检查指定的 DNS 记录是否已存在"""
     records = get_existing_dns_records()
@@ -66,6 +79,7 @@ def record_exists(name, ip):
             return True
     return False
 
+# 创建 DNS 记录
 def create_dns_record(ip, record_name):
     """创建 DNS 记录"""
     try:
@@ -90,8 +104,9 @@ def create_dns_record(ip, record_name):
     except Exception as e:
         print(f"Exception occurred while creating DNS record for IP {ip}: {str(e)}")
 
+# 主程序
 def main():
-    # 从result.csv获取前三个IP
+    # 从1.csv获取前三个IP
     try:
         top_ips = get_top_ips_from_csv("result.csv", 3)
         if not top_ips:
