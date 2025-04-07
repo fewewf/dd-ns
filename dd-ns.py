@@ -41,6 +41,8 @@ def get_existing_dns_records():
     url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records"
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
+    # 打印原始 API 返回的 JSON 数据
+    print("Cloudflare API 返回的 DNS 记录响应:", resp.json())
     return resp.json().get("result", [])
 
 def delete_dns_record(record_id):
