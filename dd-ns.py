@@ -66,7 +66,7 @@ def create_dns_record(ip, name):
     result = resp.json()
     if result.get("success"):
         print(f"成功创建: {name} => {ip}")
-        send_telegram_message(f"成功创建 DNS 记录: {name} => {ip}")
+        #send_telegram_message(f"成功创建 DNS 记录: {name} => {ip}")
     elif result.get("errors") and any(e.get("code") == 81058 for e in result["errors"]):
         print(f"记录已存在: {name} => {ip}")
     else:
