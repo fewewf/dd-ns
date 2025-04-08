@@ -3,7 +3,7 @@ name: Update cloudflare dns
 on:
   schedule:
     - cron: '37 1 * * *'  # 每天定时运行
-  workflow_dispatch:       # 手动触发
+  workflow_dispatch:       # 手动触发支持
 
 jobs:
   update-ip-list:
@@ -28,25 +28,15 @@ jobs:
 
     - name: 清洗 IP 列表，只保留合法 IP 地址
       run: |
-        cat << 'EOF' > clean_ips.py
-import re
-
-with open("ip.txt", "r", encoding="utf-8", errors="ignore") as f:
+        python -c "import re
+with open('ip.txt', 'r', encoding='utf-8', errors='ignore') as f:
     data = f.read()
-
-# 匹配合法 IPv4 地址
 ips = re.findall(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b', data)
-
-# 过滤非法 IP（每段不超过255）
 def valid(ip):
     return all(0 <= int(part) <= 255 for part in ip.split('.'))
-
 cleaned = sorted(set(filter(valid, ips)))
-
-with open("ip.txt", "w") as f:
-    f.write("\n".join(cleaned))
-EOF
-        python clean_ips.py
+with open('ip.txt', 'w') as f:
+    f.write('\n'.join(cleaned))"
 
     - name: Make script executable
       run: chmod +x CloudflareST
