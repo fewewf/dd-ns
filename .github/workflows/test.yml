@@ -27,6 +27,26 @@ jobs:
       run: |
          wget -qO ip.txt https://raw.githubusercontent.com/ymyuuu/IPDB/refs/heads/main/BestProxy/proxy.txt
 
+    - name: 清洗 IP 列表，只保留合法 IP 地址
+      run: |
+       python - <<EOF
+       import re
+
+        with open("ip.txt", "r", encoding="utf-8", errors="ignore") as f:
+          data = f.read()
+
+       # 匹配合法 IPv4 地址
+       ips = re.findall(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b', data)
+
+        # 过滤非法 IP（数值超过255）
+       def valid(ip):
+         return all(0 <= int(part) <= 255 for part in ip.split('.'))
+
+       cleaned = sorted(set(filter(valid, ips)))
+
+       with open("ip.txt", "w") as f:
+         f.write("\n".join(cleaned))
+       EOF
 
 
     - name: Make script executable
