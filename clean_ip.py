@@ -6,4 +6,4 @@ def valid(ip):
     return all(0 <= int(part) <= 255 for part in ip.split('.'))
 cleaned = sorted(set(filter(valid, ips)))
 with open('ip.txt', 'w') as f:
-    f.write('\\n'.join(cleaned))
+    f.write('\n'.join(cleaned))
