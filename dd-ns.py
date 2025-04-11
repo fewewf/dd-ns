@@ -74,17 +74,18 @@ def create_dns_record(ip, name):
 
 # === 工具函数 ===
 
-def get_top_ips_from_csv(file, count=3):
+def get_ips_from_csv(file, start=3, count=3):
     ips = []
     with open(file, newline='', encoding='utf-8') as f:
         reader = csv.reader(f)
-        next(reader, None)
-        for row in reader:
-            if row and row[0].strip():
+        next(reader, None)  # 跳过标题行
+        for i, row in enumerate(reader):
+            if i >= start and row and row[0].strip():
                 ips.append(row[0].strip())
             if len(ips) >= count:
                 break
     return ips
+
 
 def delete_all_yx1_records():
     records = get_existing_dns_records()
@@ -108,7 +109,7 @@ def main():
     try:
         log_existing_yx1_records()
 
-        top_ips = get_top_ips_from_csv("result.csv", 3)
+        top_ips = get_top_ips_from_csv("result.csv", start=3, count=3)
         if not top_ips:
             raise Exception("CSV 中未读取到有效 IP")
 
