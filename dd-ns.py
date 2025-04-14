@@ -74,7 +74,7 @@ def create_dns_record(ip, name):
 
 # === 工具函数 ===
 
-def get_ips_from_csv(file, start=3, count=3):
+def get_ips_from_csv(file, start=2, count=5):
     ips = []
     with open(file, newline='', encoding='utf-8') as f:
         reader = csv.reader(f)
