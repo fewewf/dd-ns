@@ -39,7 +39,7 @@ jobs:
         TEST_URL: ${{ secrets.TEST_URL }}
       run: |
         set -e
-        ./CloudflareST -f ip.txt -t 8 -sl 1 -n 300 -dn 8 -dt 10 -tp 8443 -url $TEST_URL -tlr 0
+        ./CloudflareST -f ip.txt -t 8 -sl 1 -n 300 -dn 10 -dt 10 -tp 8443 -url $TEST_URL -tlr 0
 
     - name: BestCF
       run: |
