@@ -109,7 +109,7 @@ def main():
     try:
         log_existing_yx1_records()
 
-        top_ips = get_ips_from_csv("result.csv", start=2, count=5)
+        top_ips = get_ips_from_csv("result.csv", start=4, count=3)
         if not top_ips:
             raise Exception("CSV 中未读取到有效 IP")
 
