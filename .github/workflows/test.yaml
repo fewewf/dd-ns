@@ -1,4 +1,4 @@
-name: Update cloudflare dns
+name: Update dns
 
 on:
   schedule:
@@ -22,11 +22,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
 
-    - name: 下载 CloudFlare IP 列表
+    - name: 下列表
       run: |
         wget -qO ip.txt https://raw.githubusercontent.com/ymyuuu/IPDB/refs/heads/main/BestProxy/proxy.txt
 
-    - name: 清洗 IP 列表，只保留合法 IP 地址
+    - name: 清洗 I
       run: |
         
         python ${{ github.workspace }}/clean_ip.py
@@ -39,7 +39,7 @@ jobs:
         TEST_URL: ${{ secrets.TEST_URL }}
       run: |
         set -e
-        ./CloudflareST -f ip.txt -t 8 -sl 1 -n 300 -dn 10 -dt 10 -tp 443 -url $TEST_URL -tlr 0
+        ./CloudflareST -f ip.txt -t 8 -sl 1 -n 300 -p 0 -dt 10 -tp 443 -url $TEST_URL -tlr 0
 
     - name: BestCF
       run: |
