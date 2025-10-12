@@ -34,7 +34,7 @@ def extract_us_proxies(filename):
                     country = parts[2].strip()
                     
                     # 检查是否为US且端口443
-                    if country == 'SG' and port == '443':
+                    if country == 'US' and port == '443':
                         proxy_info = {
                             'ip': ip,
                             'port': port,
