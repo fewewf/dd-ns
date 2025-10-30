@@ -147,7 +147,7 @@ def main():
                 valid_proxies.append(result)
                 
                 # 如果已经找到15个有效代理，就停止
-                if len(valid_proxies) >= 15:
+                if len(valid_proxies) >= 25:
                     print(f"\n已找到 {len(valid_proxies)} 个有效代理，停止检查")
                     # 取消剩余任务
                     for f in future_to_proxy:
