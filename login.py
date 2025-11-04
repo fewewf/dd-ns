@@ -45,10 +45,10 @@ def send_tg_log():
 accounts_env = os.environ.get("SITE_ACCOUNTS", "")
 accounts = []
 
-for item in accounts_env.split(";"):
+for item in accounts_env.split("$"):
     if item.strip():
         try:
-            username, password = item.split(",", 1)
+            username, password = item.split("&", 1)
             accounts.append({"username": username.strip(), "password": password.strip()})
         except ValueError:
             log(f"⚠️ 忽略格式错误的账号项: {item}")
