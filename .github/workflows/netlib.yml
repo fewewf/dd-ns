@@ -26,7 +26,7 @@ jobs:
         pip install requests dnspython
     - name: 下列表
       run: |
-        python ${{ github.workspace }}/cs.py
+        python ${{ github.workspace }}/test.py
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKENQUANBU }}
         CF_ZONE_ID: ${{ secrets.CF_ZONE_IDKOOD }}
