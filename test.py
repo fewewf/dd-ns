@@ -105,7 +105,7 @@ def main():
 
         # 遍历每个 zone_id，处理 DNS 记录
         for zone_id in zone_ids:
-            print(f"\n正在处理 Zone ID: {zone_id}")
+            print(f"\n正在处理 Zone ID")
 
             print("当前存在的记录:")
             log_existing_yx1_records(zone_id)
