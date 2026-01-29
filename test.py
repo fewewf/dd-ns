@@ -103,29 +103,36 @@ def main():
         all_selected_ips = get_ips_from_txt('test.txt', count=3)
         print(f"从 test.txt 随机选择的 IP 地址: {all_selected_ips}")
 
-        # 遍历每个 zone_id，处理 DNS 记录
-        for zone_id in zone_ids:
-            print(f"\n正在处理 Zone ID")
+        summary = []   # <<< 用来汇总所有 zone 的结果
 
-            print("当前存在的记录:")
+        for zone_id in zone_ids:
+            zone_id = zone_id.strip()
+            print(f"\n正在处理 Zone ID: {zone_id}")
+
             log_existing_yx1_records(zone_id)
 
-            print("即将删除旧记录...")
             delete_all_yx1_records(zone_id)
 
-            print("开始创建新记录...")
             for ip in all_selected_ips:
                 create_dns_record(zone_id, ip, RECORD_NAME)
 
-            message = (
-                f"已为 {RECORD_NAME} 创建 {len(all_selected_ips)} 条记录，同步自 test.txt:\n"
-                + "\n".join(all_selected_ips)
+            # 本 zone 处理结果加入汇总
+            summary.append(
+                f"Zone {zone_id} 完成，创建 {len(all_selected_ips)} 条记录"
             )
-            send_telegram_message(message)
+
+        # ✅ 所有 zone 完成后统一发送一次
+        final_message = (
+            f"DNS 批量更新完成\n"
+            f"记录名: {RECORD_NAME}\n"
+            f"IP:\n" +
+            "\n".join(all_selected_ips) +
+            "\n\n执行结果:\n" +
+            "\n".join(summary)
+        )
+
+        send_telegram_message(final_message)
 
     except Exception as e:
         print("程序运行出错:", e)
         send_telegram_message(f"程序运行出错:\n{e}")
-
-if __name__ == "__main__":
-    main()
