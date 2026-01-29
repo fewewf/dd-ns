@@ -5,7 +5,7 @@ import dns.resolver
 
 # === 配置部分 ===
 RECORD_NAME = "yx1"
-TARGET_DOMAIN = "sjc.o00o.ooo"  # 你要查询的域名
+TARGET_DOMAIN = "cf.877774.xyz"  # 你要查询的域名
 
 # 获取 Secrets 环境变量
 api_token = os.environ.get("CLOUDFLARE_API_TOKEN")
