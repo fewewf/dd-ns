@@ -135,4 +135,6 @@ def main():
 
     except Exception as e:
         print("程序运行出错:", e)
-        send_telegram_message(f"程序运行出错:\n{e}")
+        send_telegram_message(f"程序运
+if __name__ == "__main__":
+    main()
