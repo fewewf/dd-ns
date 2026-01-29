@@ -107,7 +107,7 @@ def main():
 
         for zone_id in zone_ids:
             zone_id = zone_id.strip()
-            print(f"\n正在处理 Zone ID: {zone_id}")
+            print(f"\n正在处理 Zone ID")
 
             log_existing_yx1_records(zone_id)
 
