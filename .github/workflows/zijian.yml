@@ -39,7 +39,7 @@ jobs:
         CHECK_API_URL: ${{ secrets.CHECK_API_URL }}
       run: |
         
-        python ${{ github.workspace }}/zijian.py
+        python ${{ github.workspace }}/login.py
 
     - name: Make script executable
       run: chmod +x CloudflareST
