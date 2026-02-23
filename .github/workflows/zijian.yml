@@ -62,7 +62,7 @@ jobs:
     
 
     - name: Clean up Workflow Runs
-      uses: Mattraks/delete-workflow-runs@v2
+      uses: Mattraks/delete-workflow-runs@2.1.0
       with:
         token: ${{ secrets.PAT_TOKEN }}
         repository: ${{ github.repository }}
