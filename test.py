@@ -100,7 +100,7 @@ def log_existing_yx1_records(zone_id):
 
 def main():
     try:
-        all_selected_ips = get_ips_from_txt('us.txt', count=3)
+        all_selected_ips = get_ips_from_txt('test.txt', count=3)
         print(f"从 test.txt 随机选择的 IP 地址: {all_selected_ips}")
 
         summary = []   # <<< 用来汇总所有 zone 的结果
