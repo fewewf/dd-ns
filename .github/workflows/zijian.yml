@@ -2,7 +2,7 @@ name: Update zijian
 
 on:
   schedule:
-    - cron: '37 04 */2 * *'  # 每天定时运行
+    - cron: '37 04 * * *'  # 每天定时运行
   workflow_dispatch:       # 支持手动触发
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
     - name: Install dependencies
       run: |
