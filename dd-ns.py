@@ -109,7 +109,7 @@ def main():
     try:
         log_existing_yx1_records()
 
-        top_ips = get_ips_from_csv("result.csv", start=2, count=3)
+        top_ips = get_ips_from_csv("result.csv", start=2, count=5)
         if not top_ips:
             raise Exception("CSV 中未读取到有效 IP")
 
@@ -120,7 +120,7 @@ def main():
         for ip in top_ips:
             create_dns_record(ip, RECORD_NAME)
 
-        #send_telegram_message(f"已为 {RECORD_NAME} 创建新 {len(top_ips)} 记录：\n" + "\n".join(top_ips))
+        send_telegram_message(f"已为 {RECORD_NAME} 创建新 {len(top_ips)} 记录：\n" + "\n".join(top_ips))
     except Exception as e:
         print("程序运行出错:", e)
         send_telegram_message(f"程序运行出错:\n{e}")
