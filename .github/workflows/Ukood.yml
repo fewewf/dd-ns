@@ -2,7 +2,7 @@ name: Ukood
 
 on:
   schedule:
-    - cron: '37 04 */5 * *'  # 每天定时运行
+    - cron: '37 04 * * *'  # 每天定时运行
   workflow_dispatch:       # 支持手动触发
 
 jobs:
