@@ -2,7 +2,7 @@ name: jp更新
 
 on:
   schedule:
-    - cron: '17 04 * * *'  # 每天定时运行
+    - cron: '17 */4 * * *'  # 每天定时运行
   workflow_dispatch:       # 支持手动触发
 
 jobs:
