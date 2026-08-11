@@ -7,7 +7,7 @@ on:
 
   # 每 6 小时执行一次
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "13 05 * * *"
 
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
       # ======================================================
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
 
       # ======================================================
@@ -31,7 +31,7 @@ jobs:
       # ======================================================
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
 
         with:
           python-version: "3.x"
