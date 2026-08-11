@@ -56,37 +56,7 @@ jobs:
       - name: Download CloudflareST
         run: |
 
-          set -e
-
-          echo "下载 CloudflareST..."
-
-          wget -q \https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.3.5/cfst_linux_amd64.tar.gz \
-            -O cfst.tar.gz
-
-          tar -xzf cfst.tar.gz
-
-          echo "解压结果："
-          ls -la
-
-          # --------------------------------------------------
-          # 兼容文件名
-          # --------------------------------------------------
-
-          if [ -f "./cfst" ]; then
-
-            mv ./cfst ./CloudflareST
-
-          elif [ -f "./CloudflareST" ]; then
-
-            true
-
-          else
-
-            echo "❌ 找不到 CloudflareST"
-
-            exit 1
-
-          fi
+          
 
           chmod +x CloudflareST
 
@@ -114,7 +84,7 @@ jobs:
         env:
 
           CHECK_API_URL: ${{ secrets.CHECK_API_URL }}
-          SOURCE_URL: ${{ secrets.SOURCE_URL }}
+          SOURCE_URL: ${{ secrets.SOURCE_JPTIAN }}
         
         run: |
 
