@@ -83,7 +83,7 @@ def check_config():
 
 def fetch_source():
 
-    log(
+    #log(
         f"下载IP列表: {SOURCE_URL}"
     )
 
@@ -243,7 +243,7 @@ def check_proxy(ip):
 
             if success:
 
-                log(
+               # log(
                     f"✓ 合格 {ip}:443 "
                     f"| {data.get('colo', '')} "
                     f"| {data.get('responseTime', -1)}ms"
@@ -266,7 +266,7 @@ def check_proxy(ip):
             # API 正常返回，但是 IP 不合格
             # ------------------------------------------------
 
-            log(
+            #log(
                 f"✗ 不合格 {ip}:443 "
                 f"| {data.get('message', '')}"
             )
