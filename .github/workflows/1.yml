@@ -1,13 +1,17 @@
 name: Cloudflare IP 自动优选
 
 on:
+
+  # 手动执行
   workflow_dispatch:
 
+  # 每 6 小时执行一次
   schedule:
-    # 每 6 小时执行一次
     - cron: "0 */6 * * *"
 
+
 jobs:
+
   update-dns:
 
     runs-on: ubuntu-latest
@@ -28,27 +32,33 @@ jobs:
 
       - name: Setup Python
         uses: actions/setup-python@v5
+
         with:
           python-version: "3.x"
 
 
       # ======================================================
-      # 3. 安装 Python 依赖
+      # 3. 安装 Python
       # ======================================================
 
       - name: Install dependencies
         run: |
+
           python -m pip install --upgrade pip
+
           pip install requests
 
 
       # ======================================================
-      # 4. 下载 CloudflareSpeedTest
+      # 4. 下载 CloudflareST
       # ======================================================
 
       - name: Download CloudflareST
         run: |
+
           set -e
+
+          echo "下载 CloudflareST..."
 
           wget -q \
             https://github.com/XIU2/CloudflareSpeedTest/releases/latest/download/cfst_linux_amd64.tar.gz \
@@ -56,82 +66,106 @@ jobs:
 
           tar -xzf cfst.tar.gz
 
-          # 兼容不同版本文件名
+          echo "解压结果："
+          ls -la
+
+          # --------------------------------------------------
+          # 兼容文件名
+          # --------------------------------------------------
+
           if [ -f "./cfst" ]; then
+
             mv ./cfst ./CloudflareST
+
           elif [ -f "./CloudflareST" ]; then
+
             true
+
           else
-            echo "找不到 CloudflareST"
-            ls -la
+
+            echo "❌ 找不到 CloudflareST"
+
             exit 1
+
           fi
 
           chmod +x CloudflareST
+
+          echo "CloudflareST版本："
 
           ./CloudflareST -v
 
 
       # ======================================================
-      # 5. 获取 IP + API 初筛
+      # 5. API 并发检测
       #
-      # 输出：
+      # IP源
+      #   ↓
+      # 443
+      #   ↓
+      # Worker API
+      #   ↓
+      # 16并发
+      #   ↓
       # ip.txt
-      #
-      # 注意：
-      # 这里 Python 会检测所有 IP，
-      # 不再找到3个就停止。
       # ======================================================
 
-      - name: 获取IP并API检测
+      - name: 获取IP并API并发检测
+
         env:
+
           CHECK_API_URL: ${{ secrets.CHECK_API_URL }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+
         run: |
+
           set -e
 
-          python update_dns.py --prepare-only 2>/dev/null || true
-
-
-      # ======================================================
-      # 6. 上一步 Python 当前版本是“一次性流程”
-      #
-      # 所以这里实际上重新运行一个专门生成 ip.txt 的脚本
-      #
-      # 为避免重复 API 检测，下面使用独立 prepare.py
-      # ======================================================
-
-      - name: 准备测速IP
-        env:
-          CHECK_API_URL: ${{ secrets.CHECK_API_URL }}
-        run: |
           python prepare_speedtest.py
 
+          echo ""
+          echo "=========================================="
+          echo "API合格IP数量："
+          wc -l ip.txt
+          echo "=========================================="
+
+          echo ""
+          echo "API合格IP："
+
+          cat ip.txt
+
 
       # ======================================================
-      # 7. CloudflareST 全部测速
+      # 6. CloudflareST 测速
       #
-      # API 合格的所有 IP
-      # ↓
+      # API合格IP
+      #      ↓
       # CloudflareST
-      # ↓
+      #      ↓
       # result.csv
       # ======================================================
 
       - name: CloudflareST测速
+
         env:
+
           TEST_URL: ${{ secrets.TEST_URL }}
+
         run: |
+
           set -e
 
           if [ ! -s ip.txt ]; then
-            echo "ip.txt 不存在或为空"
+
+            echo "❌ ip.txt 不存在或为空"
+
             exit 1
+
           fi
 
+          echo ""
           echo "=========================================="
-          echo "测速IP数量："
+          echo "开始 CloudflareST 测速"
+          echo "候选IP数量："
           wc -l ip.txt
           echo "=========================================="
 
@@ -143,40 +177,72 @@ jobs:
             -tp 443 \
             -url "$TEST_URL" \
             -tlr 0 \
-            -o result.csv \
-            -p 0
+            -o result.csv
 
+          echo ""
           echo "=========================================="
+          echo "CloudflareST 测速完成"
+          echo "=========================================="
+
+          if [ ! -s result.csv ]; then
+
+            echo "❌ result.csv 不存在或为空"
+
+            exit 1
+
+          fi
+
+          echo ""
           echo "测速结果："
+
           cat result.csv
-          echo "=========================================="
 
 
       # ======================================================
-      # 8. 选择最快3个 + 更新所有 Cloudflare Zone
+      # 7. 最快3个 + 更新 DNS
+      #
+      # result.csv
+      #      ↓
+      # 下载速度排序
+      #      ↓
+      # TOP 3
+      #      ↓
+      # 所有 Zone
       # ======================================================
 
       - name: 选择最快3个并更新DNS
+
         env:
+
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKENQUANBU }}
           CF_ZONE_ID: ${{ secrets.CF_ZONE_IDKOOD }}
-          CHECK_API_URL: ${{ secrets.CHECK_API_URL }}
+          
+     
         run: |
+
           set -e
 
           python update_dns.py
 
 
       # ======================================================
-      # 9. 保存测速结果
+      # 8. 保存测速结果
       # ======================================================
 
-      - name: Upload测速结果
+      - name: 保存测速结果
+
         if: always()
+
         uses: actions/upload-artifact@v4
+
         with:
+
           name: cloudflare-speedtest-result
+
           path: |
+
             ip.txt
+
             result.csv
+
           if-no-files-found: ignore
