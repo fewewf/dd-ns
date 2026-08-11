@@ -84,8 +84,8 @@ def check_config():
 def fetch_source():
 
     #log(
-        f"下载IP列表: {SOURCE_URL}"
-    )
+       # f"下载IP列表: {SOURCE_URL}"
+   # )
 
     session = requests.Session()
 
@@ -244,10 +244,10 @@ def check_proxy(ip):
             if success:
 
                # log(
-                    f"✓ 合格 {ip}:443 "
-                    f"| {data.get('colo', '')} "
-                    f"| {data.get('responseTime', -1)}ms"
-                )
+                  #  f"✓ 合格 {ip}:443 "
+                  #  f"| {data.get('colo', '')} "
+                   # f"| {data.get('responseTime', -1)}ms"
+                #)
 
                 return {
                     "ip": ip,
@@ -267,9 +267,9 @@ def check_proxy(ip):
             # ------------------------------------------------
 
             #log(
-                f"✗ 不合格 {ip}:443 "
-                f"| {data.get('message', '')}"
-            )
+                #f"✗ 不合格 {ip}:443 "
+               # f"| {data.get('message', '')}"
+           # )
 
             return None
 
