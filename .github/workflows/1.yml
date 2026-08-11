@@ -170,12 +170,8 @@ jobs:
 
           ./CloudflareST \
             -f ip.txt \
-            -t 8 \
-            -sl 1 \
-            -n 300 \
             -tp 443 \
             -url "$TEST_URL" \
-            -tlr 0 \
             -o result.csv
 
           echo ""
