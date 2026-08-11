@@ -114,7 +114,8 @@ jobs:
         env:
 
           CHECK_API_URL: ${{ secrets.CHECK_API_URL }}
-
+          SOURCE_URL: ${{ secrets.SOURCE_URL }}
+        
         run: |
 
           set -e
