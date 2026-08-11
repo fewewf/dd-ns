@@ -1,49 +1,47 @@
-name: Update dns
+name: Download and Rename CloudflareST
 
 on:
-  schedule:
-    - cron: '37 04 * * *'  # 每天定时运行
-  workflow_dispatch:       # 支持手动触发
+  workflow_dispatch:
 
 jobs:
-  update-ip-list:
+  download:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Download and extract CloudflareST
-      run: |
-         wget https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.3.5/cfst_linux_amd64.tar.gz
-         tar -xzf cfst_linux_amd64.tar.gz
-         rm cfst_linux_amd64.tar.gz
+      - name: Download and extract CloudflareST
+        run: |
+          wget https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.3.5/cfst_linux_amd64.tar.gz
+          tar -xzf cfst_linux_amd64.tar.gz
+          rm cfst_linux_amd64.tar.gz
 
-    - name: Rename and move to root
-      run: |
-        if [ -d "cfst_linux_amd64" ]; then
-        cd cfst_linux_amd64
-        mv cfst CloudflareST
-        cd ..
-        mv cfst_linux_amd64/CloudflareST .
-        rmdir cfst_linux_amd64
-        else
-        echo "Directory cfst_linux_amd64 not found"
-        exit 1
-        fi
+      - name: Rename and move to root
+        run: |
+          if [ -d "cfst_linux_amd64" ]; then
+            # 进入目录，重命名文件
+            cd cfst_linux_amd64
+            mv cfst CloudflareST
+            cd ..
+            # 移动文件到根目录
+            mv cfst_linux_amd64/CloudflareST .
+            # 删除整个文件夹（包括其他文件）
+            rm -rf cfst_linux_amd64
+          else
+            echo "Directory cfst_linux_amd64 not found"
+            exit 1
+          fi
 
-    - name: Verify file
-      run: |
-         ls -la CloudflareST
-         file CloudflareST
+      - name: Verify file
+        run: |
+          ls -la CloudflareST
+          file CloudflareST
 
-    - name: Commit and push changes
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add CloudflareST
-        git commit -m "Add CloudflareST binary from v2.3.5" || echo "No changes to commit"
-        git push
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CloudflareST
+          git commit -m "Add CloudflareST binary from v2.3.5" || echo "No changes to commit"
+          git push
