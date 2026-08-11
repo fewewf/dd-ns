@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 配置
 # ============================================================
 
-SOURCE_URL = "https://ddx.snu.cc/JP"
+SOURCE_URL = "https://raw.githubusercontent.com/tiantuuy/test/refs/heads/main/jp.txt"
 
 # API
 CHECK_TOKEN = "zfwkn"
