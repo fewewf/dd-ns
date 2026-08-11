@@ -60,8 +60,7 @@ jobs:
 
           echo "下载 CloudflareST..."
 
-          wget -q \
-            https://github.com/XIU2/CloudflareSpeedTest/releases/latest/download/cfst_linux_amd64.tar.gz \
+          wget -q \https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.3.5/cfst_linux_amd64.tar.gz \
             -O cfst.tar.gz
 
           tar -xzf cfst.tar.gz
