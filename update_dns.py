@@ -368,26 +368,7 @@ def select_fastest(
     results
 ):
 
-    log("=" * 70)
-    log("CloudflareST 下载速度排名")
-    log("=" * 70)
-
-    for index, result in enumerate(
-        results,
-        1
-    ):
-
-        log(
-            f"{index:03d}. "
-            f"{result['ip']}:443 "
-            f"| "
-            f"{result['speed']:.2f} MB/s "
-            f"| 延迟 "
-            f"{result['latency']:.2f}ms "
-            f"| 丢包 "
-            f"{result['loss']:.2f}% "
-            f"| {result['colo']}"
-        )
+    
 
     if len(results) < FINAL_IP_COUNT:
 
