@@ -139,7 +139,7 @@ jobs:
           ./CloudflareST \
             -f ip.txt \
             -tp 443 \
-            -dn 16
+            -dn 16 \
             -url "$TEST_URL" \
             -o result.csv
 
