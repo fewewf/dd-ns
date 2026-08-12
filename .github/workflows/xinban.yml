@@ -12,7 +12,7 @@ jobs:
         env:
           TG_BOT: ${{ secrets.TELEGRAM_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
-          CONHU: ${{ secrets.CF_ZONE_IDKOOD }}
+          CONHU: ${{ secrets.CLOUDFLARE_API_TOKENQUANBU }}
         run: |
           curl -s -X POST "https://api.telegram.org/bot${TG_BOT}/sendMessage" \
             -d chat_id="${TG_CHAT}" \
