@@ -17,6 +17,26 @@ RESULT_FILE = "result.csv"
 
 CF_DELAY = 1.2
 
+
+# ============================================================
+# Cloudflare 环境变量
+#
+# 只使用这两个环境变量：
+#
+# CLOUDFLARE_API_TOKEN
+# CF_ZONE_ID
+#
+# CF_ZONE_ID 填写三个独立 Zone ID：
+#
+# CF_ZONE_ID=ZONE_ID_1,ZONE_ID_2,ZONE_ID_3
+#
+# 顺序对应：
+#
+# 第1个 Zone -> 第1名 IP
+# 第2个 Zone -> 第2名 IP
+# 第3个 Zone -> 第3名 IP
+# ============================================================
+
 CF_API_TOKEN = os.environ.get(
     "CLOUDFLARE_API_TOKEN"
 )
@@ -63,6 +83,10 @@ def log(msg):
 
 def check_config():
 
+    # --------------------------------------------------------
+    # API Token
+    # --------------------------------------------------------
+
     if not CF_API_TOKEN:
 
         raise ValueError(
@@ -70,10 +94,15 @@ def check_config():
             "CLOUDFLARE_API_TOKEN"
         )
 
+    # --------------------------------------------------------
+    # Zone ID
+    # --------------------------------------------------------
+
     if not CF_ZONE_ID_ENV:
 
         raise ValueError(
-            "缺少环境变量 CF_ZONE_ID"
+            "缺少环境变量 "
+            "CF_ZONE_ID"
         )
 
     zone_ids = [
@@ -82,13 +111,129 @@ def check_config():
         if zone.strip()
     ]
 
-    if not zone_ids:
+    # --------------------------------------------------------
+    # 必须正好三个 Zone
+    # --------------------------------------------------------
+
+    if len(zone_ids) != FINAL_IP_COUNT:
 
         raise ValueError(
-            "CF_ZONE_ID 没有有效的 Zone ID"
+            f"CF_ZONE_ID 必须包含 "
+            f"{FINAL_IP_COUNT} 个 Zone ID，"
+            f"当前检测到 "
+            f"{len(zone_ids)} 个"
         )
 
     return zone_ids
+
+
+# ============================================================
+# 获取 Zone 信息
+#
+# 通过 Zone ID 自动获取真实域名
+#
+# GET /zones/{zone_id}
+# ============================================================
+
+def get_zone_info(
+    zone_id
+):
+
+    url = (
+        "https://api.cloudflare.com/client/v4/"
+        f"zones/{zone_id}"
+    )
+
+    response = session.get(
+        url,
+        headers=cf_headers,
+        timeout=20,
+    )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    if not data.get("success"):
+
+        raise RuntimeError(
+            f"获取 Zone 信息失败 "
+            f"{zone_id}: {data}"
+        )
+
+    result = data.get(
+        "result"
+    )
+
+    if not result:
+
+        raise RuntimeError(
+            f"Cloudflare 返回的 Zone 信息为空: "
+            f"{zone_id}"
+        )
+
+    zone_name = result.get(
+        "name"
+    )
+
+    if not zone_name:
+
+        raise RuntimeError(
+            f"无法从 Zone ID 获取域名: "
+            f"{zone_id}"
+        )
+
+    time.sleep(
+        CF_DELAY
+    )
+
+    return zone_name
+
+
+# ============================================================
+# 获取 DNS 记录
+# ============================================================
+
+def get_existing_dns_records(
+    zone_id
+):
+
+    url = (
+        "https://api.cloudflare.com/client/v4/"
+        f"zones/{zone_id}/dns_records"
+    )
+
+    response = session.get(
+        url,
+        headers=cf_headers,
+        params={
+            "type": "A",
+
+            # Cloudflare 单页最多100条
+            "per_page": 100,
+        },
+        timeout=20,
+    )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    if not data.get("success"):
+
+        raise RuntimeError(
+            f"Cloudflare获取DNS失败: "
+            f"{data}"
+        )
+
+    time.sleep(
+        CF_DELAY
+    )
+
+    return data.get(
+        "result",
+        []
+    )
 
 
 # ============================================================
@@ -137,8 +282,10 @@ def read_speedtest_result():
     for row in rows[1:]:
 
         if not row:
+
             continue
 
+        # ----------------------------------------------------
         # CloudflareST 标准 CSV：
         #
         # IP 地址
@@ -148,6 +295,7 @@ def read_speedtest_result():
         # 平均延迟
         # 下载速度(MB/s)
         # 地区码
+        # ----------------------------------------------------
 
         if len(row) < 6:
 
@@ -216,7 +364,9 @@ def read_speedtest_result():
 # 选择最快3个
 # ============================================================
 
-def select_fastest(results):
+def select_fastest(
+    results
+):
 
     log("=" * 70)
     log("CloudflareST 下载速度排名")
@@ -251,11 +401,6 @@ def select_fastest(results):
         :FINAL_IP_COUNT
     ]
 
-    ips = [
-        item["ip"]
-        for item in selected
-    ]
-
     log("=" * 70)
     log(
         f"最终最快 {FINAL_IP_COUNT} 个 IP"
@@ -268,7 +413,7 @@ def select_fastest(results):
     ):
 
         log(
-            f"{index}. "
+            f"第 {index} 名: "
             f"{result['ip']}:443 "
             f"| "
             f"{result['speed']:.2f} MB/s "
@@ -280,51 +425,10 @@ def select_fastest(results):
 
     log("=" * 70)
 
-    return ips
-
-
-# ============================================================
-# 获取 DNS 记录
-# ============================================================
-
-def get_existing_dns_records(
-    zone_id
-):
-
-    url = (
-        "https://api.cloudflare.com/client/v4/"
-        f"zones/{zone_id}/dns_records"
-    )
-
-    response = session.get(
-        url,
-        headers=cf_headers,
-        params={
-            "type": "A",
-            "per_page": 100,
-        },
-        timeout=20,
-    )
-
-    response.raise_for_status()
-
-    data = response.json()
-
-    if not data.get("success"):
-
-        raise RuntimeError(
-            f"Cloudflare获取DNS失败: "
-            f"{data}"
-        )
-
-    time.sleep(
-        CF_DELAY
-    )
-
-    return data.get(
-        "result",
-        []
-    )
+    return [
+        result["ip"]
+        for result in selected
+    ]
 
 
 # ============================================================
@@ -334,7 +438,8 @@ def get_existing_dns_records(
 def delete_dns_record(
     zone_id,
     record_id,
-    ip
+    ip,
+    fqdn
 ):
 
     url = (
@@ -357,11 +462,11 @@ def delete_dns_record(
 
         raise RuntimeError(
             f"Cloudflare删除失败 "
-            f"{ip}: {data}"
+            f"{fqdn} -> {ip}: {data}"
         )
 
     log(
-        f"[Zone {zone_id}] "
+        f"[{fqdn}] "
         f"删除旧IP: {ip}"
     )
 
@@ -376,7 +481,8 @@ def delete_dns_record(
 
 def create_dns_record(
     zone_id,
-    ip
+    ip,
+    fqdn
 ):
 
     url = (
@@ -386,9 +492,25 @@ def create_dns_record(
 
     payload = {
         "type": "A",
+
+        # ----------------------------------------------------
+        # Zone 已经由 zone_id 确定
+        #
+        # 这里只填写主机记录：
+        #
+        # yx1
+        #
+        # Cloudflare 最终对应：
+        #
+        # yx1.example.com
+        # ----------------------------------------------------
+
         "name": RECORD_NAME,
+
         "content": ip,
+
         "ttl": 60,
+
         "proxied": False,
     }
 
@@ -407,11 +529,11 @@ def create_dns_record(
 
         raise RuntimeError(
             f"Cloudflare创建失败 "
-            f"{ip}: {data}"
+            f"{fqdn} -> {ip}: {data}"
         )
 
     log(
-        f"[Zone {zone_id}] "
+        f"[{fqdn}] "
         f"新增IP: {ip}"
     )
 
@@ -426,24 +548,49 @@ def create_dns_record(
 
 def update_zone(
     zone_id,
-    desired_ips
+    domain,
+    desired_ip
 ):
 
-    log("=" * 70)
-    log(
-        f"[Zone {zone_id}] 开始更新"
+    fqdn = (
+        f"{RECORD_NAME}.{domain}"
     )
+
+    log("=" * 70)
 
     log(
         f"[Zone {zone_id}] "
-        f"目标IP: {desired_ips}"
+        f"开始更新"
     )
+
+    log(
+        f"域名: {fqdn}"
+    )
+
+    log(
+        f"目标IP: {desired_ip}"
+    )
+
+    # --------------------------------------------------------
+    # 获取当前 A 记录
+    # --------------------------------------------------------
 
     records = get_existing_dns_records(
         zone_id
     )
 
-    existing = {}
+    existing = []
+
+    # --------------------------------------------------------
+    # 精确匹配 yx1.domain
+    #
+    # 不会影响：
+    #
+    # domain
+    # www.domain
+    # yx2.domain
+    # api.domain
+    # --------------------------------------------------------
 
     for record in records:
 
@@ -454,97 +601,90 @@ def update_zone(
         name = record.get(
             "name",
             ""
-        )
+        ).strip().lower()
 
-        # 匹配：
-        #
-        # yx1.example.com
-        #
-        # 或：
-        #
-        # yx1
-
-        if (
-            name.split(".")[0].lower()
-            != RECORD_NAME.lower()
-        ):
+        if name != fqdn.lower():
 
             continue
 
-        record_id = record.get("id")
-        content = record.get("content")
+        record_id = record.get(
+            "id"
+        )
+
+        content = record.get(
+            "content"
+        )
 
         if record_id and content:
 
-            existing[
-                content
-            ] = record_id
+            existing.append({
+                "id": record_id,
+                "ip": content,
+            })
 
-    existing_ips = set(
-        existing.keys()
-    )
-
-    desired_ips = set(
-        desired_ips
-    )
-
-    to_delete = (
-        existing_ips - desired_ips
-    )
-
-    to_add = (
-        desired_ips - existing_ips
-    )
-
-    keep = (
-        existing_ips & desired_ips
-    )
+    existing_ips = [
+        item["ip"]
+        for item in existing
+    ]
 
     log(
-        f"[Zone {zone_id}] "
-        f"当前IP: {list(existing_ips)}"
+        f"[{fqdn}] "
+        f"当前IP: {existing_ips}"
     )
 
-    log(
-        f"[Zone {zone_id}] "
-        f"保留: {list(keep)}"
-    )
+    # --------------------------------------------------------
+    # 判断目标 IP 是否已经存在
+    # --------------------------------------------------------
 
-    log(
-        f"[Zone {zone_id}] "
-        f"删除: {list(to_delete)}"
-    )
-
-    log(
-        f"[Zone {zone_id}] "
-        f"新增: {list(to_add)}"
+    target_exists = any(
+        item["ip"] == desired_ip
+        for item in existing
     )
 
     # --------------------------------------------------------
     # 删除旧 IP
+    #
+    # 如果存在多个 A 记录：
+    #
+    # 只保留目标 IP
+    # 其他全部删除
     # --------------------------------------------------------
 
-    for ip in to_delete:
+    for item in existing:
+
+        if item["ip"] == desired_ip:
+
+            continue
 
         delete_dns_record(
             zone_id,
-            existing[ip],
-            ip
+            item["id"],
+            item["ip"],
+            fqdn
         )
 
     # --------------------------------------------------------
-    # 添加新 IP
+    # 添加目标 IP
     # --------------------------------------------------------
 
-    for ip in to_add:
+    if not target_exists:
 
         create_dns_record(
             zone_id,
-            ip
+            desired_ip,
+            fqdn
+        )
+
+    else:
+
+        log(
+            f"[{fqdn}] "
+            f"目标IP已经存在，无需创建: "
+            f"{desired_ip}"
         )
 
     log(
-        f"[Zone {zone_id}] "
+        f"[{fqdn}] "
         f"DNS更新完成"
     )
 
@@ -556,40 +696,30 @@ def update_zone(
 def main():
 
     log("=" * 70)
-    log("开始处理 CloudflareST 测速结果")
+    log(
+        "开始处理 CloudflareST 测速结果"
+    )
     log("=" * 70)
+
+    # ========================================================
+    # 1. 检查配置
+    # ========================================================
 
     zone_ids = check_config()
 
-    # --------------------------------------------------------
-    # 1. 读取测速结果
-    # --------------------------------------------------------
-
-    results = read_speedtest_result()
-
-    # --------------------------------------------------------
-    # 2. 选择最快3个
-    # --------------------------------------------------------
-
-    fastest_ips = select_fastest(
-        results
+    log(
+        f"检测到 {len(zone_ids)} 个 Cloudflare Zone"
     )
 
-    # --------------------------------------------------------
-    # 3. 更新所有 Zone
-    # --------------------------------------------------------
+    # ========================================================
+    # 2. 自动获取三个 Zone 的域名
+    # ========================================================
+
+    zone_domains = []
 
     log("=" * 70)
-    log("开始更新所有 Cloudflare Zone")
-    log(
-        f"统一目标IP: {fastest_ips}"
-    )
-    log(
-        f"Zone数量: {len(zone_ids)}"
-    )
+    log("获取 Cloudflare Zone 域名")
     log("=" * 70)
-
-    failed_zones = []
 
     for index, zone_id in enumerate(
         zone_ids,
@@ -597,32 +727,126 @@ def main():
     ):
 
         log(
-            f"处理 Zone "
+            f"正在获取 Zone "
             f"{index}/{len(zone_ids)}: "
             f"{zone_id}"
+        )
+
+        domain = get_zone_info(
+            zone_id
+        )
+
+        zone_domains.append(
+            domain
+        )
+
+        log(
+            f"Zone {zone_id} "
+            f"对应域名: {domain}"
+        )
+
+    log("=" * 70)
+
+    # ========================================================
+    # 3. 读取测速结果
+    # ========================================================
+
+    results = read_speedtest_result()
+
+    # ========================================================
+    # 4. 选择最快3个 IP
+    # ========================================================
+
+    fastest_ips = select_fastest(
+        results
+    )
+
+    # ========================================================
+    # 5. 建立对应关系
+    #
+    # 第1名 IP -> 第1个 Zone
+    # 第2名 IP -> 第2个 Zone
+    # 第3名 IP -> 第3个 Zone
+    # ========================================================
+
+    log("=" * 70)
+    log("最终 IP -> 域名映射")
+    log("=" * 70)
+
+    for index in range(
+        FINAL_IP_COUNT
+    ):
+
+        ip = fastest_ips[index]
+
+        domain = zone_domains[index]
+
+        fqdn = (
+            f"{RECORD_NAME}.{domain}"
+        )
+
+        log(
+            f"第 {index + 1} 名 IP: "
+            f"{ip} "
+            f"-> "
+            f"{fqdn}"
+        )
+
+    log("=" * 70)
+
+    # ========================================================
+    # 6. 更新三个独立 Zone
+    # ========================================================
+
+    failed_zones = []
+
+    for index in range(
+        FINAL_IP_COUNT
+    ):
+
+        zone_id = zone_ids[index]
+
+        domain = zone_domains[index]
+
+        ip = fastest_ips[index]
+
+        fqdn = (
+            f"{RECORD_NAME}.{domain}"
+        )
+
+        log(
+            f"处理 "
+            f"{index + 1}/"
+            f"{FINAL_IP_COUNT}: "
+            f"{fqdn} "
+            f"-> "
+            f"{ip}"
         )
 
         try:
 
             update_zone(
                 zone_id,
-                fastest_ips
+                domain,
+                ip
             )
 
         except Exception as e:
 
             log(
                 f"❌ Zone {zone_id} "
+                f"({domain}) "
                 f"更新失败: {e}"
             )
 
-            failed_zones.append(
-                zone_id
-            )
+            failed_zones.append({
+                "zone_id": zone_id,
+                "domain": domain,
+            })
 
-    # --------------------------------------------------------
-    # 4. 最终结果
-    # --------------------------------------------------------
+    # ========================================================
+    # 7. 最终结果
+    # ========================================================
 
     log("=" * 70)
 
@@ -642,12 +866,25 @@ def main():
         "✓ 所有 Zone 更新成功"
     )
 
-    log(
-        f"最终IP: {fastest_ips}"
-    )
+    log("=" * 70)
+
+    for index in range(
+        FINAL_IP_COUNT
+    ):
+
+        log(
+            f"最终结果: "
+            f"yx1.{zone_domains[index]} "
+            f"-> "
+            f"{fastest_ips[index]}"
+        )
 
     log("=" * 70)
 
+
+# ============================================================
+# 启动
+# ============================================================
 
 if __name__ == "__main__":
 
