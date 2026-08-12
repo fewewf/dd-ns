@@ -11,7 +11,7 @@ import requests
 
 RECORD_NAME = "yx1"
 
-FINAL_IP_COUNT = 3
+FINAL_IP_COUNT = 10
 
 RESULT_FILE = "result.csv"
 
