@@ -533,7 +533,7 @@ def create_dns_record(
         )
 
     log(
-        f"[{fqdn}] "
+       # f"[{fqdn}] "
         f"新增IP: {ip}"
     )
 
@@ -564,7 +564,7 @@ def update_zone(
     )
 
     log(
-        f"域名: {fqdn}"
+       # f"域名: {fqdn}"
     )
 
     log(
@@ -628,7 +628,7 @@ def update_zone(
     ]
 
     log(
-        f"[{fqdn}] "
+       # f"[{fqdn}] "
         f"当前IP: {existing_ips}"
     )
 
@@ -678,13 +678,13 @@ def update_zone(
     else:
 
         log(
-            f"[{fqdn}] "
+            #f"[{fqdn}] "
             f"目标IP已经存在，无需创建: "
             f"{desired_ip}"
         )
 
     log(
-        f"[{fqdn}] "
+        #f"[{fqdn}] "
         f"DNS更新完成"
     )
 
@@ -742,7 +742,7 @@ def main():
 
         log(
             f"Zone {zone_id} "
-            f"对应域名: {domain}"
+           # f"对应域名: {domain}"
         )
 
     log("=" * 70)
@@ -789,7 +789,7 @@ def main():
             f"第 {index + 1} 名 IP: "
             f"{ip} "
             f"-> "
-            f"{fqdn}"
+           # f"{fqdn}"
         )
 
     log("=" * 70)
@@ -818,7 +818,7 @@ def main():
             f"处理 "
             f"{index + 1}/"
             f"{FINAL_IP_COUNT}: "
-            f"{fqdn} "
+           # f"{fqdn} "
             f"-> "
             f"{ip}"
         )
@@ -874,8 +874,8 @@ def main():
 
         log(
             f"最终结果: "
-            f"yx1.{zone_domains[index]} "
-            f"-> "
+          #  f"yx1.{zone_domains[index]} "
+            #f"-> "
             f"{fastest_ips[index]}"
         )
 
