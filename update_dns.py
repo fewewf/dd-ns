@@ -9,7 +9,7 @@ import requests
 # 配置
 # ============================================================
 
-RECORD_NAME = "yx1"
+RECORD_NAME = "yx2"
 
 FINAL_IP_COUNT = 10
 
