@@ -1,4 +1,4 @@
-name: Cloudflare IP 自动优选
+name: yx2
 
 on:
 
@@ -83,7 +83,7 @@ jobs:
 
         env:
 
-          CHECK_API_URL: ${{ secrets.CHECK_API_URL }}
+          CHECK_API_URL: ${{ secrets.CHECK_API_URL_TIAN }}
           SOURCE_URL: ${{ secrets.SOURCE_JPTIAN }}
         
         run: |
