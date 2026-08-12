@@ -462,11 +462,11 @@ def delete_dns_record(
 
         raise RuntimeError(
             f"Cloudflare删除失败 "
-            f"{fqdn} -> {ip}: {data}"
+            f"{ip}: {data}"
         )
 
     log(
-        f"[{fqdn}] "
+        
         f"删除旧IP: {ip}"
     )
 
@@ -533,7 +533,7 @@ def create_dns_record(
         )
 
     log(
-       # f"[{fqdn}] "
+       
         f"新增IP: {ip}"
     )
 
@@ -564,7 +564,7 @@ def update_zone(
     )
 
     log(
-       # f"域名: {fqdn}"
+        f"域名"
     )
 
     log(
@@ -628,7 +628,7 @@ def update_zone(
     ]
 
     log(
-       # f"[{fqdn}] "
+       
         f"当前IP: {existing_ips}"
     )
 
@@ -678,13 +678,13 @@ def update_zone(
     else:
 
         log(
-            #f"[{fqdn}] "
+            
             f"目标IP已经存在，无需创建: "
             f"{desired_ip}"
         )
 
     log(
-        #f"[{fqdn}] "
+        
         f"DNS更新完成"
     )
 
@@ -742,7 +742,7 @@ def main():
 
         log(
             f"Zone {zone_id} "
-           # f"对应域名: {domain}"
+           
         )
 
     log("=" * 70)
@@ -789,7 +789,7 @@ def main():
             f"第 {index + 1} 名 IP: "
             f"{ip} "
             f"-> "
-           # f"{fqdn}"
+            f"{zone_id}"
         )
 
     log("=" * 70)
@@ -818,7 +818,7 @@ def main():
             f"处理 "
             f"{index + 1}/"
             f"{FINAL_IP_COUNT}: "
-           # f"{fqdn} "
+            f"{zone_id} "
             f"-> "
             f"{ip}"
         )
@@ -873,9 +873,8 @@ def main():
     ):
 
         log(
-            f"最终结果: "
-          #  f"yx1.{zone_domains[index]} "
-            #f"-> "
+            f"最终结果: 
+            f"-> "
             f"{fastest_ips[index]}"
         )
 
