@@ -139,6 +139,7 @@ jobs:
           ./CloudflareST \
             -f ip.txt \
             -tp 443 \
+            -dn 16
             -url "$TEST_URL" \
             -o result.csv
 
@@ -188,24 +189,4 @@ jobs:
           python update_dns.py
 
 
-      # ======================================================
-      # 8. 保存测速结果
-      # ======================================================
-
-      - name: 保存测速结果
-
-        if: always()
-
-        uses: actions/upload-artifact@v4
-
-        with:
-
-          name: cloudflare-speedtest-result
-
-          path: |
-
-            ip.txt
-
-            result.csv
-
-          if-no-files-found: ignore
+      
