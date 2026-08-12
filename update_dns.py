@@ -873,7 +873,7 @@ def main():
     ):
 
         log(
-            f"最终结果: 
+            f"最终结果:"
             f"-> "
             f"{fastest_ips[index]}"
         )
