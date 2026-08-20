@@ -37,7 +37,7 @@ def extract_us_proxies(filename):
                     port = port.strip()
 
                     # 过滤 US + 8443
-                    if country == 'US' and port == '8443':
+                    if country == 'JP' and port == '8443':
                         proxy_info = {
                             'ip': ip,
                             'port': port,
