@@ -35,7 +35,7 @@ jobs:
           branch: main  # 替换成你的默认分支
     - name: 清洗 I
       env:
-        PROXY_FILE_URL: ${{ secrets.PROXY_FILE_URL }}
+        PROXY_FILE_URL: ${{ secrets.SOURCE_JPTIAN }}
         CHECK_API_URL: ${{ secrets.CHECK_API_URL }}
       run: |
         
