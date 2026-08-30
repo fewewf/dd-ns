@@ -36,7 +36,7 @@ jobs:
     - name: 清洗 I
       env:
         PROXY_FILE_URL: ${{ secrets.SOURCE_JPTIAN }}
-        CHECK_API_URL: ${{ secrets.CHECK_API_URL }}
+        CHECK_API_URL: ${{ secrets.CHECK_API_URL_TIAN }}
       run: |
         
         python ${{ github.workspace }}/login.py
