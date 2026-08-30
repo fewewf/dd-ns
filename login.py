@@ -132,7 +132,7 @@ def save_valid_ips(valid_proxies, filename='ip.txt'):
             for proxy in valid_proxies
             if proxy.get('success') is True
             and isinstance(proxy.get('responseTime'), (int, float))
-            and 0 <= proxy.get('responseTime') <= 600
+            and 0 <= proxy.get('responseTime') <= 500
         ]
 
         # 按延迟从低到高排序
