@@ -7,7 +7,7 @@ on:
 
   # 每 6 小时执行一次
   schedule:
-    - cron: "13 05 * * *"
+    - cron: "13 05 * * 6"
 
 
 jobs:
