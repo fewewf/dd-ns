@@ -23,13 +23,11 @@ TARGET_COUNTRY = os.getenv("TARGET_COUNTRY", "JP").strip().upper()
 TARGET_PORT = os.getenv("TARGET_PORT", "8443").strip()
 
 # Worker 内部单阶段检测超时
-# 建议 3000~5000
 WORKER_TIMEOUT_MS = int(
     os.getenv("WORKER_TIMEOUT_MS", "5000")
 )
 
 # Python 等待 Worker HTTP 响应的时间
-# 必须 > WORKER_TIMEOUT_MS
 REQUEST_TIMEOUT = int(
     os.getenv("REQUEST_TIMEOUT", "10")
 )
@@ -83,9 +81,8 @@ def download_file(url, filename):
         print("错误: PROXY_FILE_URL 未设置")
         return False
 
-    print(f"下载文件成功")
-
     try:
+
         response = session.get(
             url,
             timeout=30
@@ -93,8 +90,6 @@ def download_file(url, filename):
 
         response.raise_for_status()
 
-        # 使用 response.text 保存
-        # 适用于当前这种文本代理列表
         with open(
             filename,
             "w",
@@ -140,7 +135,6 @@ def extract_proxies(filename):
     例如：
 
         1.2.3.4:8443#JP
-
     """
 
     proxies = []
@@ -181,7 +175,7 @@ def extract_proxies(filename):
                         continue
 
                     # ------------------------------------------------
-                    # IPv4
+                    # IPv4:PORT
                     # ------------------------------------------------
 
                     if ":" not in ip_port:
@@ -216,7 +210,6 @@ def extract_proxies(filename):
 
                 except ValueError:
 
-                    # 格式错误直接跳过
                     continue
 
         # ------------------------------------------------------------
@@ -281,12 +274,224 @@ def build_check_url(api_base_url, ip, port):
 
 
 # ============================================================
+# 判断出口 IP 类型
+# ============================================================
+
+def detect_exit_ip_type(data):
+    """
+    根据 Worker 返回的 probe_results 判断出口 IP 类型。
+
+    Worker 返回结构示例：
+
+    {
+        "probe_results": {
+            "ipv4": {
+                "ok": true,
+                "exit": {
+                    "ip": "198.51.100.20",
+                    "ipType": "ipv4"
+                }
+            },
+            "ipv6": {
+                "ok": true,
+                "exit": {
+                    "ip": "2001:db8::1",
+                    "ipType": "ipv6"
+                }
+            }
+        }
+    }
+
+    返回：
+
+        {
+            "is_ipv4_exit": True,
+            "is_ipv6_exit": False,
+            "is_dual_stack_exit": False,
+            "exit_ipv4": "198.51.100.20",
+            "exit_ipv6": "",
+            "exit_ip_type": "ipv4"
+        }
+
+    注意：
+    1. 优先根据 probe_results 中实际出口 IP 判断。
+    2. probe_results 缺失时，兼容 supports_ipv4 等字段。
+    3. IPv4 和 IPv6 都存在时，判断为双栈。
+    """
+
+    probe_results = data.get(
+        "probe_results",
+        {}
+    ) or {}
+
+    # ------------------------------------------------------------
+    # 提取 IPv4 探测结果
+    # ------------------------------------------------------------
+
+    ipv4_result = probe_results.get(
+        "ipv4",
+        {}
+    ) or {}
+
+    ipv4_exit = ipv4_result.get(
+        "exit",
+        {}
+    ) or {}
+
+    exit_ipv4 = ipv4_exit.get(
+        "ip",
+        ""
+    )
+
+    # ------------------------------------------------------------
+    # 提取 IPv6 探测结果
+    # ------------------------------------------------------------
+
+    ipv6_result = probe_results.get(
+        "ipv6",
+        {}
+    ) or {}
+
+    ipv6_exit = ipv6_result.get(
+        "exit",
+        {}
+    ) or {}
+
+    exit_ipv6 = ipv6_exit.get(
+        "ip",
+        ""
+    )
+
+    # ------------------------------------------------------------
+    # 优先依据实际探针出口 IP 判断
+    # ------------------------------------------------------------
+
+    is_ipv4_exit = bool(
+        exit_ipv4
+    )
+
+    is_ipv6_exit = bool(
+        exit_ipv6
+    )
+
+    # ------------------------------------------------------------
+    # 兼容旧字段
+    #
+    # 仅在 probe_results 没有明确出口 IP 时使用
+    # ------------------------------------------------------------
+
+    if not is_ipv4_exit and not is_ipv6_exit:
+
+        supports_ipv4 = data.get(
+            "supports_ipv4",
+            False
+        ) is True
+
+        supports_ipv6 = data.get(
+            "supports_ipv6",
+            False
+        ) is True
+
+        inferred_stack = str(
+            data.get(
+                "inferred_stack",
+                ""
+            )
+        ).lower()
+
+        # 根据辅助字段推断
+        if supports_ipv4:
+
+            is_ipv4_exit = True
+
+        if supports_ipv6:
+
+            is_ipv6_exit = True
+
+        # inferred_stack 兼容
+        if inferred_stack in (
+            "ipv4",
+            "ipv4_only",
+            "v4",
+            "ipv4-only"
+        ):
+
+            is_ipv4_exit = True
+            is_ipv6_exit = False
+
+        elif inferred_stack in (
+            "ipv6",
+            "ipv6_only",
+            "v6",
+            "ipv6-only"
+        ):
+
+            is_ipv4_exit = False
+            is_ipv6_exit = True
+
+        elif inferred_stack in (
+            "dual_stack",
+            "dual",
+            "ipv4_ipv6",
+            "ipv4+ipv6"
+        ):
+
+            is_ipv4_exit = True
+            is_ipv6_exit = True
+
+    # ------------------------------------------------------------
+    # 最终类型
+    # ------------------------------------------------------------
+
+    if is_ipv4_exit and is_ipv6_exit:
+
+        exit_ip_type = "dual_stack"
+
+    elif is_ipv4_exit:
+
+        exit_ip_type = "ipv4"
+
+    elif is_ipv6_exit:
+
+        exit_ip_type = "ipv6"
+
+    else:
+
+        exit_ip_type = "unknown"
+
+    # ------------------------------------------------------------
+    # 返回判断结果
+    # ------------------------------------------------------------
+
+    return {
+        "is_ipv4_exit": is_ipv4_exit,
+        "is_ipv6_exit": is_ipv6_exit,
+        "is_dual_stack_exit": (
+            is_ipv4_exit and is_ipv6_exit
+        ),
+        "exit_ipv4": exit_ipv4,
+        "exit_ipv6": exit_ipv6,
+        "exit_ip_type": exit_ip_type
+    }
+
+
+# ============================================================
 # 检查单个代理
 # ============================================================
 
 def check_proxy(proxy_info):
     """
-    通过 Cloudflare Worker 检查代理
+    通过 Cloudflare Worker 检查代理。
+
+    新增：
+        is_ipv4_exit
+        is_ipv6_exit
+        is_dual_stack_exit
+        exit_ipv4
+        exit_ipv6
+        exit_ip_type
+
+    最终保存时只保留 IPv4 出口。
     """
 
     ip = proxy_info["ip"]
@@ -324,7 +529,7 @@ def check_proxy(proxy_info):
             data = response.json()
 
             # --------------------------------------------------------
-            # Worker 返回的数据
+            # Worker 返回的响应时间
             # --------------------------------------------------------
 
             response_time = data.get(
@@ -332,13 +537,13 @@ def check_proxy(proxy_info):
                 -1
             )
 
-            # 某些情况下可能是字符串
             try:
 
                 if isinstance(
                     response_time,
                     str
                 ):
+
                     response_time = float(
                         response_time
                     )
@@ -346,6 +551,18 @@ def check_proxy(proxy_info):
             except Exception:
 
                 response_time = -1
+
+            # --------------------------------------------------------
+            # 判断出口 IP 类型
+            # --------------------------------------------------------
+
+            exit_info = detect_exit_ip_type(
+                data
+            )
+
+            # --------------------------------------------------------
+            # 整理结果
+            # --------------------------------------------------------
 
             result = {
                 "ip": ip,
@@ -355,8 +572,7 @@ def check_proxy(proxy_info):
                     data.get(
                         "success",
                         False
-                    )
-                    is True
+                    ) is True
                 ),
 
                 "proxyIP": data.get(
@@ -406,10 +622,46 @@ def check_proxy(proxy_info):
                     False
                 ),
 
+                # ----------------------------------------------------
+                # 原始探针结果
+                # ----------------------------------------------------
+
                 "probe_results": data.get(
                     "probe_results",
                     {}
                 ),
+
+                # ----------------------------------------------------
+                # 新增出口 IP 判断结果
+                # ----------------------------------------------------
+
+                "is_ipv4_exit": exit_info[
+                    "is_ipv4_exit"
+                ],
+
+                "is_ipv6_exit": exit_info[
+                    "is_ipv6_exit"
+                ],
+
+                "is_dual_stack_exit": exit_info[
+                    "is_dual_stack_exit"
+                ],
+
+                "exit_ipv4": exit_info[
+                    "exit_ipv4"
+                ],
+
+                "exit_ipv6": exit_info[
+                    "exit_ipv6"
+                ],
+
+                "exit_ip_type": exit_info[
+                    "exit_ip_type"
+                ],
+
+                # ----------------------------------------------------
+                # 时间信息
+                # ----------------------------------------------------
 
                 "timestamp": data.get(
                     "timeStamp",
@@ -434,18 +686,54 @@ def check_proxy(proxy_info):
             }
 
             # --------------------------------------------------------
-            # 成功
+            # Worker 检测成功
             # --------------------------------------------------------
 
             if result["success"]:
 
-                print(
-                    f"✓ 有效 "
-                    f"{ip}:{port} "
-                    f"- {response_time}ms "
-                    f"- colo={result['colo']} "
-                    f"- attempt={attempt}"
-                )
+                # ----------------------------------------------------
+                # IPv4 出口
+                # ----------------------------------------------------
+
+                if result["is_ipv4_exit"]:
+
+                    print(
+                        f"✓ 有效 IPv4 出口 "
+                        f"{ip}:{port} "
+                        f"- 出口IP={result['exit_ipv4']} "
+                        f"- {response_time}ms "
+                        f"- colo={result['colo']} "
+                        f"- stack={result['exit_ip_type']} "
+                        f"- attempt={attempt}"
+                    )
+
+                # ----------------------------------------------------
+                # IPv6 出口
+                # ----------------------------------------------------
+
+                elif result["is_ipv6_exit"]:
+
+                    print(
+                        f"✗ 过滤 IPv6 出口 "
+                        f"{ip}:{port} "
+                        f"- 出口IP={result['exit_ipv6']} "
+                        f"- {response_time}ms "
+                        f"- colo={result['colo']} "
+                        f"- stack={result['exit_ip_type']}"
+                    )
+
+                # ----------------------------------------------------
+                # 没有明确出口 IP
+                # ----------------------------------------------------
+
+                else:
+
+                    print(
+                        f"✗ 无法确定出口类型 "
+                        f"{ip}:{port} "
+                        f"- stack={result['exit_ip_type']} "
+                        f"- attempt={attempt}"
+                    )
 
                 return result
 
@@ -512,7 +800,6 @@ def check_proxy(proxy_info):
                 f"- {e}"
             )
 
-            # HTTP 4xx / 5xx 一般没必要重试
             break
 
         # ============================================================
@@ -556,7 +843,9 @@ def check_proxy(proxy_info):
 
         if attempt <= MAX_RETRIES:
 
-            time.sleep(RETRY_DELAY)
+            time.sleep(
+                RETRY_DELAY
+            )
 
     # ================================================================
     # 最终失败
@@ -565,24 +854,43 @@ def check_proxy(proxy_info):
     return {
         "ip": ip,
         "port": port,
+
         "success": False,
+
         "proxyIP": "-1",
         "portRemote": -1,
         "colo": "",
         "responseTime": -1,
         "message": "",
+
         "candidate": f"{ip}:{port}",
+
         "inferred_stack": "",
+
         "supports_ipv4": False,
         "supports_ipv6": False,
         "dual_stack": False,
+
         "probe_results": {},
+
+        # 新增出口类型字段
+        "is_ipv4_exit": False,
+        "is_ipv6_exit": False,
+        "is_dual_stack_exit": False,
+
+        "exit_ipv4": "",
+        "exit_ipv6": "",
+        "exit_ip_type": "unknown",
+
         "timestamp": "",
         "http_elapsed": -1,
+
         "attempt": MAX_RETRIES + 1,
+
         "original_line": proxy_info[
             "full_line"
         ],
+
         "error": last_error or "unknown error"
     }
 
@@ -649,7 +957,9 @@ def check_all_proxies(proxies):
 
                 result = future.result()
 
-                results.append(result)
+                results.append(
+                    result
+                )
 
             except Exception as e:
 
@@ -675,7 +985,7 @@ def check_all_proxies(proxies):
 
 
 # ============================================================
-# 保存有效 IP
+# 保存有效 IPv4 出口 IP
 # ============================================================
 
 def save_valid_ips(
@@ -683,22 +993,25 @@ def save_valid_ips(
     filename=OUTPUT_FILENAME
 ):
     """
-    保存：
+    保存条件：
 
-    success=True
-    responseTime <= MAX_RESPONSE_TIME
+    1. success=True
+    2. is_ipv4_exit=True
+    3. responseTime <= MAX_RESPONSE_TIME
 
-    最终只写 IP
+    最终只写入候选 IP，不写端口。
+
+    IPv6-only 出口直接过滤。
+    双栈出口保留，因为它具备 IPv4 出口能力。
     """
 
     filtered = []
 
     for result in results:
 
-        response_time = result.get(
-            "responseTime",
-            -1
-        )
+        # --------------------------------------------------------
+        # Worker 检测成功
+        # --------------------------------------------------------
 
         success = result.get(
             "success",
@@ -707,6 +1020,27 @@ def save_valid_ips(
 
         if not success:
             continue
+
+        # --------------------------------------------------------
+        # 只保留 IPv4 出口
+        # --------------------------------------------------------
+
+        is_ipv4_exit = result.get(
+            "is_ipv4_exit",
+            False
+        )
+
+        if not is_ipv4_exit:
+            continue
+
+        # --------------------------------------------------------
+        # 响应时间
+        # --------------------------------------------------------
+
+        response_time = result.get(
+            "responseTime",
+            -1
+        )
 
         if not isinstance(
             response_time,
@@ -720,7 +1054,9 @@ def save_valid_ips(
         ):
             continue
 
-        filtered.append(result)
+        filtered.append(
+            result
+        )
 
     # ------------------------------------------------------------
     # 延迟排序
@@ -743,14 +1079,31 @@ def save_valid_ips(
 
     for result in filtered:
 
-        ip = result["ip"]
+        # 优先使用 Worker 返回的 IPv4 出口 IP
+        # 如果不存在，则使用输入候选 IP
+        ip = result.get(
+            "exit_ipv4"
+        ) or result.get(
+            "ip",
+            ""
+        )
+
+        if not ip:
+            continue
 
         if ip in seen_ips:
             continue
 
-        seen_ips.add(ip)
+        seen_ips.add(
+            ip
+        )
 
-        final_results.append(result)
+        # 保存出口 IP
+        result["final_ip"] = ip
+
+        final_results.append(
+            result
+        )
 
     # ------------------------------------------------------------
     # 写文件
@@ -767,12 +1120,12 @@ def save_valid_ips(
             for result in final_results:
 
                 f.write(
-                    f"{result['ip']}\n"
+                    f"{result['final_ip']}\n"
                 )
 
         print(
             f"\n已保存 "
-            f"{len(final_results)} 个有效 IP "
+            f"{len(final_results)} 个有效 IPv4 出口 IP "
             f"到 {filename}"
         )
 
@@ -799,11 +1152,74 @@ def print_statistics(
 
     total = len(proxies)
 
+    # ------------------------------------------------------------
+    # Worker API 检测成功
+    # ------------------------------------------------------------
+
     api_success = [
         r
         for r in results
-        if r.get("success") is True
+        if r.get(
+            "success"
+        ) is True
     ]
+
+    # ------------------------------------------------------------
+    # IPv4 出口
+    # ------------------------------------------------------------
+
+    ipv4_exits = [
+        r
+        for r in api_success
+        if r.get(
+            "is_ipv4_exit"
+        ) is True
+    ]
+
+    # ------------------------------------------------------------
+    # IPv6 出口
+    # ------------------------------------------------------------
+
+    ipv6_exits = [
+        r
+        for r in api_success
+        if (
+            r.get(
+                "is_ipv6_exit"
+            ) is True
+            and r.get(
+                "is_ipv4_exit"
+            ) is not True
+        )
+    ]
+
+    # ------------------------------------------------------------
+    # 双栈出口
+    # ------------------------------------------------------------
+
+    dual_stack_exits = [
+        r
+        for r in api_success
+        if r.get(
+            "is_dual_stack_exit"
+        ) is True
+    ]
+
+    # ------------------------------------------------------------
+    # 无法判断出口类型
+    # ------------------------------------------------------------
+
+    unknown_exits = [
+        r
+        for r in api_success
+        if r.get(
+            "exit_ip_type"
+        ) == "unknown"
+    ]
+
+    # ------------------------------------------------------------
+    # 超时
+    # ------------------------------------------------------------
 
     timeouts = [
         r
@@ -814,11 +1230,17 @@ def print_statistics(
         )
     ]
 
+    # ------------------------------------------------------------
+    # 其他错误
+    # ------------------------------------------------------------
+
     errors = [
         r
         for r in results
         if (
-            r.get("error")
+            r.get(
+                "error"
+            )
             and "Timeout"
             not in r.get(
                 "error",
@@ -827,45 +1249,74 @@ def print_statistics(
         )
     ]
 
+    # ------------------------------------------------------------
+    # 打印统计
+    # ------------------------------------------------------------
+
     print()
     print("=" * 60)
     print("统计信息")
     print("=" * 60)
 
     print(
-        f"总代理数:       {total}"
+        f"总代理数:          {total}"
     )
 
     print(
-        f"完成检查:       {len(results)}"
+        f"完成检查:          {len(results)}"
     )
 
     print(
-        f"API有效:        {len(api_success)}"
+        f"API有效:           {len(api_success)}"
     )
 
     print(
-        f"超时:            {len(timeouts)}"
+        f"IPv4出口:          {len(ipv4_exits)}"
     )
 
     print(
-        f"其他错误:       {len(errors)}"
+        f"IPv6-only出口:     {len(ipv6_exits)}"
     )
 
     print(
-        f"≤ {MAX_RESPONSE_TIME}ms: "
+        f"双栈出口:          {len(dual_stack_exits)}"
+    )
+
+    print(
+        f"无法判断出口:       {len(unknown_exits)}"
+    )
+
+    print(
+        f"超时:              {len(timeouts)}"
+    )
+
+    print(
+        f"其他错误:          {len(errors)}"
+    )
+
+    print(
+        f"IPv4且≤{MAX_RESPONSE_TIME}ms: "
         f"{len(filtered)}"
     )
+
+    # ------------------------------------------------------------
+    # 百分比
+    # ------------------------------------------------------------
 
     if total:
 
         print(
-            f"API有效率:      "
+            f"API有效率:         "
             f"{len(api_success) / total * 100:.2f}%"
         )
 
         print(
-            f"≤ {MAX_RESPONSE_TIME}ms占比: "
+            f"IPv4出口占比:      "
+            f"{len(ipv4_exits) / total * 100:.2f}%"
+        )
+
+        print(
+            f"IPv4低延迟占比:   "
             f"{len(filtered) / total * 100:.2f}%"
         )
 
@@ -883,27 +1334,34 @@ def print_final_results(
     if not filtered:
 
         print(
-            "\n没有找到符合条件的代理"
+            "\n没有找到符合条件的 IPv4 出口代理"
         )
 
         return
 
     print()
     print(
-        f"最终有效列表 "
+        f"最终有效 IPv4 出口列表 "
         f"(≤ {MAX_RESPONSE_TIME}ms):"
     )
 
-    print("-" * 60)
+    print("-" * 80)
 
     for index, proxy in enumerate(
         filtered,
         1
     ):
 
+        # 最终保存的 IPv4 出口地址
         ip = proxy.get(
-            "ip",
-            ""
+            "final_ip",
+            proxy.get(
+                "exit_ipv4",
+                proxy.get(
+                    "ip",
+                    ""
+                )
+            )
         )
 
         response_time = proxy.get(
@@ -917,19 +1375,19 @@ def print_final_results(
         )
 
         stack = proxy.get(
-            "inferred_stack",
-            ""
+            "exit_ip_type",
+            "unknown"
         )
 
         print(
             f"{index:4d}. "
-            f"{ip:<20} "
+            f"{ip:<40} "
             f"{response_time:>6}ms "
             f"{colo:<6} "
             f"{stack}"
         )
 
-    print("-" * 60)
+    print("-" * 80)
 
 
 # ============================================================
@@ -949,6 +1407,13 @@ def print_slow_proxies(
         ) is not True:
             continue
 
+        # 仅统计具有 IPv4 出口能力的代理
+        if not result.get(
+            "is_ipv4_exit",
+            False
+        ):
+            continue
+
         response_time = result.get(
             "responseTime",
             -1
@@ -963,7 +1428,9 @@ def print_slow_proxies(
             > MAX_RESPONSE_TIME
         ):
 
-            slow.append(result)
+            slow.append(
+                result
+            )
 
     slow.sort(
         key=lambda x: x.get(
@@ -977,14 +1444,20 @@ def print_slow_proxies(
 
     print()
     print(
-        f"超过 {MAX_RESPONSE_TIME}ms 的有效代理:"
+        f"超过 {MAX_RESPONSE_TIME}ms 的 IPv4 有效代理:"
     )
 
     for result in slow:
 
+        exit_ipv4 = result.get(
+            "exit_ipv4",
+            ""
+        )
+
         print(
             f"  ✗ "
             f"{result['ip']}:{result['port']} "
+            f"- 出口IPv4={exit_ipv4} "
             f"- {result['responseTime']}ms"
         )
 
@@ -1000,7 +1473,9 @@ def print_failed_proxies(
     failed = [
         r
         for r in results
-        if r.get("error")
+        if r.get(
+            "error"
+        )
     ]
 
     if not failed:
@@ -1021,6 +1496,57 @@ def print_failed_proxies(
 
 
 # ============================================================
+# 打印 IPv6-only 代理
+# ============================================================
+
+def print_ipv6_only_proxies(
+    results
+):
+    """
+    打印检测成功，但只有 IPv6 出口的代理。
+
+    这些代理不会被保存到 ip.txt。
+    """
+
+    ipv6_only = [
+        r
+        for r in results
+        if (
+            r.get(
+                "success"
+            ) is True
+            and r.get(
+                "is_ipv6_exit"
+            ) is True
+            and r.get(
+                "is_ipv4_exit"
+            ) is not True
+        )
+    ]
+
+    if not ipv6_only:
+        return
+
+    print()
+    print(
+        f"IPv6-only 代理 (已过滤，不写入 {OUTPUT_FILENAME}):"
+    )
+
+    print("-" * 80)
+
+    for result in ipv6_only:
+
+        print(
+            f"  IPv6 "
+            f"{result['ip']}:{result['port']} "
+            f"- 出口IPv6={result.get('exit_ipv6', '')} "
+            f"- {result.get('responseTime', -1)}ms"
+        )
+
+    print("-" * 80)
+
+
+# ============================================================
 # Main
 # ============================================================
 
@@ -1028,6 +1554,7 @@ def main():
 
     print("=" * 60)
     print("Cloudflare Worker Proxy Checker")
+    print("IPv4 Exit Only")
     print("=" * 60)
 
     print(
@@ -1161,7 +1688,7 @@ def main():
 
     print()
     print(
-        "步骤 4/4: 筛选结果"
+        "步骤 4/4: 筛选 IPv4 出口结果"
     )
 
     filtered = save_valid_ips(
@@ -1196,6 +1723,14 @@ def main():
     )
 
     # ============================================================
+    # IPv6-only proxies
+    # ============================================================
+
+    print_ipv6_only_proxies(
+        results
+    )
+
+    # ============================================================
     # Failed proxies
     # ============================================================
 
@@ -1214,4 +1749,5 @@ def main():
 # ============================================================
 
 if __name__ == "__main__":
+
     main()
